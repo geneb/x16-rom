@@ -38,7 +38,7 @@ jx310	jsr jz100       ;extract file info
 	cmp #2          ;rs232?
 	bne jx315       ;no...
 ;
-	jmp error5      ;device not present
+	jmp cki232
 ;
 ;some extra checks for tape
 ;
@@ -111,7 +111,7 @@ ck10	cmp #3
 	cmp #2          ;rs232?
 	bne ck15
 ;
-	jmp error5      ;is rs232...device not present
+	jmp cko232      ;is rs232
 ;
 ;
 ;special tape channel handling
