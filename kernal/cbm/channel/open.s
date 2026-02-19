@@ -124,6 +124,10 @@ uart_dlm		  = $01     ; divisor latch high byte (when DLAB=1)
 ;
 dlab_init		  = %10000011 ; 8 bits, no parity, 1 stop bit, DLAB=1
 ;
+fifo_init		  = %11000111 ; enable FIFO, clear TX/RX queues, 14-byte threshold
+mcr_init		  = %00010011 ; enable DTR, RTS, and auto-RTS/CTS flow control
+
+;
 ; init232 - CLEAN UP 232 SYSTEM FOR OPEN/CLOSE
 ;  should set up for 8/N/1, 115200 baud. (rate is default for the Network I/O port)
 ;
@@ -155,12 +159,13 @@ open232:
 ; Variables initalized:
 ;   addr232 - base port address - 2 bytes
 ;   baudrate - baud rate divisor - 2 bytes. (in init232)
-;	serial_regs - 16550 register contents - 1 byte
+;	serial_regs - Line Control Register setting. - 1 byte
+
 	jsr init232      ;SET UP RS232, .Y=0 ON RETURN
 
 open232_020:
-	cpy fnlen		; check if at end of filename...
-	beq open232_025 ; yes...
+	cpy fnlen		 ; check if at end of filename...
+	beq open232_done ; yes...
 ;
 	lda (fnadr), y	; get the next byte of the "filename", which in this case is the configuration 
 					; for the serial port.
@@ -181,25 +186,36 @@ open232_020:
 
 	; serial_regs must have its MSB set to 1 (DLAB=1) to allow baud rate to be set.
 	lda serial_regs
-	; I'm on the fence about this - shoud I force DLAB here or not?
-	; ora #$80 ; set DLAB=1 to allow baud rate to be set.
-	; sta serial_regs
+	; Forcing the DLAB bit here, just in case the caller forgets it..
+	ora #$80 ; set DLAB=1 to allow baud rate to be set.
+	sta serial_regs
 	sta uart_base + uart_lcr ; set control register
-	
+
 	lda baudrate
 	sta uart_base + uart_dll ; set baud rate low byte
 	lda baudrate + 1
 	sta uart_base + uart_dlm ; set baud rate high byte	
 	
+	lda serial_regs
+	; Clear DLAB bit after setting baud rate.
+	and #$7F ; clear DLAB bit
+	sta serial_regs
+	sta uart_base + uart_lcr ; update control register with DLAB cleared.
 
-	cpy #4
-	bne open232_020
+	; set up FIFO...
+	lda #fifo_init
+	sta uart_base + uart_iir_fcr
 
-open232_025:
+	; set up modem control register - just enable RTS and DTR for now.
+	lda #mcr_init
+	sta uart_base + uart_mcr
 
-	
+	;cpy #4
+	;bne open232_020
 
-	clc
+open232_done:
+
+
 	rts
 
 ; rsr  8/25/80 - add rs-232 code
