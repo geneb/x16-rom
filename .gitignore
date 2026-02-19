@@ -1,2 +1,3 @@
 *.xcworkspace
 build
+*.o

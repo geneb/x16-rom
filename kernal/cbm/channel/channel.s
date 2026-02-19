@@ -25,7 +25,6 @@ stop  = $ffe1
 .import cki232
 .import cko232
 .import cls232
-.import opn232
 .export t1
 
 ; serial

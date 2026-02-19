@@ -90,7 +90,7 @@ bn20	bcs bn30        ;devices >3
 ;input from serial bus
 ;
 bn30	lda status      ;status from last
-	beq bn35        ;was good
+		beq bn35        ;was good
 bn31	lda #$d         ;bad...all done
 bn32	clc             ;valid data
 bn33	rts

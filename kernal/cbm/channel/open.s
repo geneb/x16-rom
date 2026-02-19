@@ -19,6 +19,8 @@
 ;*                                 *
 ;***********************************
 ;
+.import addr232, baudrate, serial_regs
+
 nopen	ldx la          ;check file #
 	bne op98        ;is not the keyboard
 ;
@@ -57,10 +59,10 @@ op110	inc ldtnd       ;new file
 ;
 ;perform tape open stuff
 ;
-op150	cmp #2
+op150	cmp #2		; device #2?
 	bne op152
 ;
-	jmp opn232
+	jmp open232
 op152	jmp error9
 op175	clc             ;flag good open
 	rts             ;exit in peace
@@ -106,6 +108,99 @@ op40	lda (fnadr),y
 	bne op40
 ;
 op45	jmp cunlsn      ;jsr unlsn: clc: rts
+
+
+uart_base         = addr232
+uart_rbr_thr      = $00     ; rbr (read) / thr (write)
+uart_ier          = $01     ; interrupt enable register
+uart_iir_fcr      = $02     ; interrupt identification register / fifo control register
+uart_lcr          = $03		; line control register
+uart_mcr		  = $04     ; modem control register
+uart_lsr          = $05     ; read-only — line status register
+uart_msr          = $07		; scratch register
+;
+uart_dll		  = $00     ; divisor latch low byte (when DLAB=1)
+uart_dlm		  = $01     ; divisor latch high byte (when DLAB=1)
+;
+dlab_init		  = %10000011 ; 8 bits, no parity, 1 stop bit, DLAB=1
+;
+; init232 - CLEAN UP 232 SYSTEM FOR OPEN/CLOSE
+;  should set up for 8/N/1, 115200 baud. (rate is default for the Network I/O port)
+;
+init232:
+
+	lda #$08
+	sta baudrate
+	lda #$00
+	sta baudrate + 1  ; Sets up default baud rate of 115,200.
+
+	lda #dlab_init
+	sta uart_base + uart_lcr
+	lda baudrate            ; Set divisor for 115200 baud (14.7456 MHz / (16 * 115200) = 8, $08)
+	sta uart_base + uart_dll
+	lda baudrate + 1            ; High byte of divisor
+	sta uart_base + uart_dlm
+	ldy #00 		  ; make sure to point to first byte of the "filename" for open232
+	rts
+
+;OPEN
+;
+open232:
+; open232 - Open RS-232 device.
+; call format from BASIC is:
+; OPEN 1,2,1,"<port addr lo><control register><baud rate lo><baud rate hi>"
+; The high byte of the port address is assumed to be 0x9F for the X16.
+
+;
+; Variables initalized:
+;   addr232 - base port address - 2 bytes
+;   baudrate - baud rate divisor - 2 bytes. (in init232)
+;	serial_regs - 16550 register contents - 1 byte
+	jsr init232      ;SET UP RS232, .Y=0 ON RETURN
+
+open232_020:
+	cpy fnlen		; check if at end of filename...
+	beq open232_025 ; yes...
+;
+	lda (fnadr), y	; get the next byte of the "filename", which in this case is the configuration 
+					; for the serial port.
+	sta addr232, y ; sets the low byte of the port address.
+	iny
+
+	lda (fnadr), y  ; get control register value
+	sta serial_regs, y
+	iny
+
+	lda (fnadr), y ; get baud rate low byte
+	sta baudrate, y
+	iny
+
+	lda (fnadr), y ; get baud rate high byte
+	sta baudrate + 1, y
+	iny
+
+	; serial_regs must have its MSB set to 1 (DLAB=1) to allow baud rate to be set.
+	lda serial_regs
+	; I'm on the fence about this - shoud I force DLAB here or not?
+	; ora #$80 ; set DLAB=1 to allow baud rate to be set.
+	; sta serial_regs
+	sta uart_base + uart_lcr ; set control register
+	
+	lda baudrate
+	sta uart_base + uart_dll ; set baud rate low byte
+	lda baudrate + 1
+	sta uart_base + uart_dlm ; set baud rate high byte	
+	
+
+	cpy #4
+	bne open232_020
+
+open232_025:
+
+	
+
+	clc
+	rts
 
 ; rsr  8/25/80 - add rs-232 code
 ; rsr  8/26/80 - top of memory handler
