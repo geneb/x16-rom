@@ -37,13 +37,13 @@ kvswitch_tmp2
 
 .segment "RS232"
 ;
-addr232     .res 2           ; serial port base address, set by open232.
-baudrate    .res 2           ; baud rate divisor.
+addr232     .res 2        ; serial port base address, set by open232.
+baudrate    .res 2        ; baud rate divisor.
 serial_regs .res 1        ; 16550 register contents.
+.export addr232, baudrate, serial_regs
 ;
 	.segment "KVECTORS";rem kernal/os indirects(20)
 
-.export addr232, baudrate, serial_regs
 .export cinv, cbinv, nminv, iopen, iclose, ichkin, ickout, iclrch, ibasin, ibsout, istop, igetin, iclall, keyhdl, iload, isave; [vectors]
 .export iecop, ieabort, inirq, inbrk, innmi, incop, inabort; [vectors]
 

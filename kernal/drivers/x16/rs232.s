@@ -26,10 +26,10 @@
 
 .include "io.inc"
 
-.segment "RS232"
+.segment "RS232D"
 
 .import dfltn, dflto
-.import t1, status
+.import t1, status, addr232
 
 .export cls232
 .export cko232
@@ -59,24 +59,17 @@ cki232:
 	rts
 
 ;BSOUT
-;
+; Output a character.
 bso232:
-; 	lda #$01
-; 	sta veralo
-; 	lda #$80
-; 	sta veramid
-; 	lda #$0F
-; 	sta verahi
-; 	lda #2
-; :	bit veradat
-; 	bne :-
-; 	dec veralo
-; 	lda t1
-; 	sta veradat
+
+; TODO check for cts first.
+
+	lda t1
+	sta addr232
 	rts
 
 ;BASIN
-;
+; Input a character.
 bsi232:
 ; 	lda #$01
 ; 	sta veralo
